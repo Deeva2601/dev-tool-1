@@ -1,0 +1,29 @@
+from pathlib import Path
+
+from pydantic import BaseModel, Field
+
+
+class PackConfig(BaseModel):
+    root: Path
+    output: Path | None = None
+    max_file_bytes: int = 512_000
+    respect_gitignore: bool = True
+    extra_excludes: list[str] = Field(default_factory=list)
+
+
+class FileRecord(BaseModel):
+    relative_path: str
+    size_bytes: int
+    language: str
+    content: str
+    tokens: int
+
+
+class PackResult(BaseModel):
+    root: str
+    files: list[FileRecord]
+    skipped: list[str]
+    tree: str
+    markdown: str
+    total_bytes: int
+    total_tokens: int
