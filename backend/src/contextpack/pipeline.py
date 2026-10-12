@@ -4,6 +4,7 @@ from contextpack.discover import iter_source_files, language_for, load_spec
 from contextpack.formatters import directory_tree, render_markdown
 from contextpack.models import FileRecord, PackConfig, PackResult
 from contextpack.tokens import count_tokens
+from contextpack.skeleton import skeletonize
 
 
 def pack(config: PackConfig) -> PackResult:
@@ -20,6 +21,8 @@ def pack(config: PackConfig) -> PackResult:
             skipped.append(f"{relative} ({reason})")
             continue
         content = path.read_text(encoding="utf-8", errors="replace")
+        if config.skeleton:
+            content = skeletonize(content, language_for(path))
         files.append(
             FileRecord(
                 relative_path=relative,

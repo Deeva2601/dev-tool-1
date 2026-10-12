@@ -19,6 +19,7 @@ def main(
     max_file_bytes: int = typer.Option(512_000, "--max-file-bytes"),
     exclude: list[str] = typer.Option([], "--exclude", "-e", help="Extra gitignore-style pattern."),
     no_gitignore: bool = typer.Option(False, "--no-gitignore"),
+    skeleton: bool = typer.Option(False, "--skeleton", help="Strip function bodies, keep signatures."),
 ) -> None:
     """Pack a local directory into one markdown digest."""
     result = pack(
@@ -28,6 +29,7 @@ def main(
             max_file_bytes=max_file_bytes,
             respect_gitignore=not no_gitignore,
             extra_excludes=exclude,
+            skeleton=skeleton,
         )
     )
     written = write_result(result, output)
