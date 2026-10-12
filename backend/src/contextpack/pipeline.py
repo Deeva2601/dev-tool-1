@@ -1,10 +1,11 @@
 from pathlib import Path
 
+from contextpack.budget import fit_budget, prepare_item
+from contextpack.compress import is_focus_pinned, mode_for
 from contextpack.discover import iter_source_files, language_for, load_spec
 from contextpack.formatters import directory_tree, render_markdown
 from contextpack.models import FileRecord, PackConfig, PackResult
 from contextpack.tokens import count_tokens
-from contextpack.skeleton import skeletonize
 
 
 def pack(config: PackConfig) -> PackResult:
@@ -13,27 +14,40 @@ def pack(config: PackConfig) -> PackResult:
         raise NotADirectoryError(f"Not a directory: {root}")
 
     spec = load_spec(root, config.respect_gitignore, config.extra_excludes)
-    files: list[FileRecord] = []
+    prepared = []
     skipped: list[str] = []
 
     for path, relative, reason in iter_source_files(root, spec, config.max_file_bytes):
         if path is None:
             skipped.append(f"{relative} ({reason})")
             continue
-        content = path.read_text(encoding="utf-8", errors="replace")
-        if config.skeleton:
-            content = skeletonize(content, language_for(path))
-        files.append(
-            FileRecord(
+        raw_text = path.read_text(encoding="utf-8", errors="replace")
+        language = language_for(path)
+        prepared.append(
+            prepare_item(
                 relative_path=relative,
                 size_bytes=path.stat().st_size,
-                language=language_for(path),
-                content=content,
-                tokens=count_tokens(content),
+                language=language,
+                raw=raw_text,
+                mode=mode_for(relative, config),
+                pinned=is_focus_pinned(relative, config),
             )
         )
 
-    files.sort(key=lambda item: item.relative_path)
+    fitted = fit_budget(prepared, config.max_tokens)
+    skipped.extend(fitted.omitted)
+
+    files = [
+        FileRecord(
+            relative_path=item.relative_path,
+            size_bytes=item.size_bytes,
+            language=item.language,
+            content=item.content,
+            tokens=item.tokens,
+            applied_mode=item.mode,
+        )
+        for item in fitted.kept
+    ]
     tree = directory_tree([item.relative_path for item in files])
     total_bytes = sum(item.size_bytes for item in files)
     total_tokens = sum(item.tokens for item in files)
