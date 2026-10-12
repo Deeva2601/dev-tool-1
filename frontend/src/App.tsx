@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { packSource } from "./api";
 import type { Compression, DigestFormat, PackResponse } from "./types";
+import { ResultView } from "./ResultView.tsx";
 import "./App.css";
 
 export default function App() {
@@ -112,25 +113,8 @@ export default function App() {
 
       {error ? <p className="error">{error}</p> : null}
 
-      {result ? (
-        <section className="result">
-          <p className="stats">
-            {result.files.length} files · {result.skipped.length} skipped · {result.total_bytes} bytes ·{" "}
-            {result.total_tokens} tokens
-          </p>
-          <ul className="files">
-            {result.files.map((file) => (
-              <li key={file.path}>
-                <code>{file.path}</code>
-                <span>
-                  {file.mode} · {file.tokens} tok · rank {Math.round(file.rank)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <pre className="digest">{result.document}</pre>
-        </section>
-      ) : null}
+      {result ? <ResultView result={result} format={format} /> : null}
+
     </main>
   );
 }

@@ -47,6 +47,7 @@ class FileSummary(BaseModel):
     tokens: int
     mode: str
     rank: float
+    content: str
 
 
 class PackResponse(BaseModel):
@@ -103,6 +104,7 @@ def pack_endpoint(body: PackRequest) -> PackResponse:
                 tokens=item.tokens,
                 mode=item.applied_mode,
                 rank=item.rank,
+                content=item.content,
             )
             for item in result.files
         ],

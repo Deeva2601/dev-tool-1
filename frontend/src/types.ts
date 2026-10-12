@@ -17,6 +17,7 @@ export type FileSummary = {
   tokens: number;
   mode: string;
   rank: number;
+  content: string;
 };
 
 export type PackResponse = {
