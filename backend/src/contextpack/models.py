@@ -16,6 +16,7 @@ class PackConfig(BaseModel):
     focus: list[str] = Field(default_factory=list)
     rules: list[str] = Field(default_factory=list)
     max_tokens: int | None = None
+    entries: list[str] = Field(default_factory=list)
 
 
 class FileRecord(BaseModel):
@@ -25,6 +26,7 @@ class FileRecord(BaseModel):
     content: str
     tokens: int
     applied_mode: str = "full"
+    rank: float = 0.0
 
 
 class PackResult(BaseModel):

@@ -6,6 +6,7 @@ from contextpack.discover import iter_source_files, language_for, load_spec
 from contextpack.formatters import directory_tree, render_markdown
 from contextpack.models import FileRecord, PackConfig, PackResult
 from contextpack.tokens import count_tokens
+from contextpack.rank import rank_paths
 
 
 def pack(config: PackConfig) -> PackResult:
@@ -32,7 +33,13 @@ def pack(config: PackConfig) -> PackResult:
                 mode=mode_for(relative, config),
                 pinned=is_focus_pinned(relative, config),
             )
-        )
+        ) 
+    scores = rank_paths(
+        [(item.relative_path, item.raw, item.language) for item in prepared],
+        config.entries,
+    )
+    for item in prepared:
+        item.rank = scores.get(item.relative_path, 0.0)
 
     fitted = fit_budget(prepared, config.max_tokens)
     skipped.extend(fitted.omitted)
@@ -45,6 +52,7 @@ def pack(config: PackConfig) -> PackResult:
             content=item.content,
             tokens=item.tokens,
             applied_mode=item.mode,
+            rank=item.rank,
         )
         for item in fitted.kept
     ]
