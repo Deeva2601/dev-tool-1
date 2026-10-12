@@ -56,7 +56,7 @@ def render_markdown(
             [
                 f"### {record.relative_path}",
                 "",
-                f"<!-- bytes: {record.size_bytes} tokens: {record.tokens} -->",
+                f"<!-- bytes: {record.size_bytes} tokens: {record.tokens} mode: {record.applied_mode} -->",
                 "",
                 f"```{record.language}",
                 record.content.rstrip("\n"),

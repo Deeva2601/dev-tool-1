@@ -15,6 +15,7 @@ class PackConfig(BaseModel):
     mode: Compression = "full"
     focus: list[str] = Field(default_factory=list)
     rules: list[str] = Field(default_factory=list)
+    max_tokens: int | None = None
 
 
 class FileRecord(BaseModel):
@@ -23,6 +24,7 @@ class FileRecord(BaseModel):
     language: str
     content: str
     tokens: int
+    applied_mode: str = "full"
 
 
 class PackResult(BaseModel):

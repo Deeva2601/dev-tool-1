@@ -34,6 +34,13 @@ def mode_for(relative: str, config: PackConfig) -> Compression:
         return "full"
     return config.mode
 
+def is_focus_pinned(relative: str, config: PackConfig) -> bool:
+    """True when focus, not a rule, is what selected this file's mode."""
+    for pattern, _mode in (parse_rule(rule) for rule in config.rules):
+        if _matches([pattern], relative):
+            return False
+    return _matches(config.focus, relative)
+
 
 def compress(source: str, language: str, mode: Compression) -> str:
     if mode == "full":
