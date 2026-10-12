@@ -1,62 +1,71 @@
+import os
 from pathlib import Path
 
 import typer
 
 from contextpack.compress import parse_rule
 from contextpack.models import PackConfig
-from contextpack.pipeline import pack, write_result
+from contextpack.pipeline import write_result
+from contextpack.sources import SourceError, pack_source, write_agent_file
 
 
 def main(
-    path: Path = typer.Argument(
-        ...,
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-        help="Directory to pack.",
-    ),
-    output: Path | None = typer.Option(None, "--output", "-o", help="Write digest to this file."),
+    source: str = typer.Argument(..., help="Local directory, owner/repo, or Git URL."),
+    output: Path | None = typer.Option(None, "--output", "-o"),
     max_file_bytes: int = typer.Option(512_000, "--max-file-bytes"),
-    exclude: list[str] = typer.Option([], "--exclude", "-e", help="Extra gitignore-style pattern."),
+    exclude: list[str] = typer.Option([], "--exclude", "-e"),
     no_gitignore: bool = typer.Option(False, "--no-gitignore"),
-    mode: str = typer.Option("full", "--mode", help="full, skeleton, or outline."),
-    skeleton: bool = typer.Option(False, "--skeleton", help="Shortcut for --mode skeleton."),
-    focus: list[str] = typer.Option([], "--focus", "-f", help="Glob kept verbatim. Repeatable."),
-    rule: list[str] = typer.Option([], "--rule", "-r", help="PATTERN=full|skeleton|outline. Last match wins."),
-    max_tokens: int | None = typer.Option(None, "--max-tokens", help="Hard cap for the sum of file tokens."),
-    entry: list[str] = typer.Option([], "--entry", help="Extra entrypoint glob. Repeatable."),
-    output_format: str = typer.Option("markdown", "--format", help="markdown, xml, or json."),
-    no_redact: bool = typer.Option(False, "--no-redact", help="Keep detected secrets in the digest."),
+    mode: str = typer.Option("full", "--mode"),
+    skeleton: bool = typer.Option(False, "--skeleton"),
+    focus: list[str] = typer.Option([], "--focus", "-f"),
+    rule: list[str] = typer.Option([], "--rule", "-r"),
+    max_tokens: int | None = typer.Option(None, "--max-tokens"),
+    entry: list[str] = typer.Option([], "--entry"),
+    output_format: str = typer.Option("markdown", "--format"),
+    no_redact: bool = typer.Option(False, "--no-redact"),
+    branch: str | None = typer.Option(None, "--branch"),
+    token: str | None = typer.Option(
+        None,
+        "--token",
+        envvar="CONTEXTPACK_TOKEN",
+        help="GitHub token for a private clone. Prefer the env var.",
+    ),
+    agent: bool = typer.Option(False, "--agent", help="Write a sibling .AGENTS.md next to --output."),
 ) -> None:
-    """Pack a local directory into one markdown digest."""
+    """Pack a local directory or Git repository into one digest."""
     if mode not in {"full", "skeleton", "outline"}:
         raise typer.BadParameter("mode must be full, skeleton, or outline")
     if skeleton and mode != "full":
         raise typer.BadParameter("pass either --skeleton or --mode, not both")
-    if output_format not in {"markdown", "xml", "json"}:
-        raise typer.BadParameter("format must be markdown, xml, or json")
     if skeleton:
         mode = "skeleton"
+    if output_format not in {"markdown", "xml", "json"}:
+        raise typer.BadParameter("format must be markdown, xml, or json")
+    if agent and output is None:
+        raise typer.BadParameter("--agent requires --output")
     for item in rule:
         parse_rule(item)
 
-    result = pack(
-        PackConfig(
-            root=path,
-            output=output,
-            max_file_bytes=max_file_bytes,
-            respect_gitignore=not no_gitignore,
-            extra_excludes=exclude,
-            mode=mode,  # type: ignore[arg-type]
-            focus=focus,
-            rules=rule,
-            max_tokens=max_tokens,
-            entries=entry,
-            format=output_format,  # type: ignore[arg-type]
-            redact_secrets=not no_redact,
-        )
+    config = PackConfig(
+        root=Path("."),
+        output=output,
+        max_file_bytes=max_file_bytes,
+        respect_gitignore=not no_gitignore,
+        extra_excludes=exclude,
+        mode=mode,  # type: ignore[arg-type]
+        focus=focus,
+        rules=rule,
+        max_tokens=max_tokens,
+        entries=entry,
+        format=output_format,  # type: ignore[arg-type]
+        redact_secrets=not no_redact,
     )
+    try:
+        result = pack_source(source, config, token=token or os.environ.get("CONTEXTPACK_TOKEN"), branch=branch)
+    except (SourceError, NotADirectoryError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
     written = write_result(result, output)
     typer.echo(
         f"files={len(result.files)} skipped={len(result.skipped)} "
@@ -64,13 +73,12 @@ def main(
     )
     if written is not None:
         typer.echo(f"wrote {written}")
+        if agent:
+            instructions = write_agent_file(written, result)
+            typer.echo(f"wrote {instructions}")
     else:
         typer.echo(result.markdown)
 
 
 def app() -> None:
     typer.run(main)
-
-
-if __name__ == "__main__":
-    app()
