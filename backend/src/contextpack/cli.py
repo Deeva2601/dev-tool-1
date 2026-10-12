@@ -26,12 +26,16 @@ def main(
     rule: list[str] = typer.Option([], "--rule", "-r", help="PATTERN=full|skeleton|outline. Last match wins."),
     max_tokens: int | None = typer.Option(None, "--max-tokens", help="Hard cap for the sum of file tokens."),
     entry: list[str] = typer.Option([], "--entry", help="Extra entrypoint glob. Repeatable."),
+    output_format: str = typer.Option("markdown", "--format", help="markdown, xml, or json."),
+    no_redact: bool = typer.Option(False, "--no-redact", help="Keep detected secrets in the digest."),
 ) -> None:
     """Pack a local directory into one markdown digest."""
     if mode not in {"full", "skeleton", "outline"}:
         raise typer.BadParameter("mode must be full, skeleton, or outline")
     if skeleton and mode != "full":
         raise typer.BadParameter("pass either --skeleton or --mode, not both")
+    if output_format not in {"markdown", "xml", "json"}:
+        raise typer.BadParameter("format must be markdown, xml, or json")
     if skeleton:
         mode = "skeleton"
     for item in rule:
@@ -49,6 +53,8 @@ def main(
             rules=rule,
             max_tokens=max_tokens,
             entries=entry,
+            format=output_format,  # type: ignore[arg-type]
+            redact_secrets=not no_redact,
         )
     )
     written = write_result(result, output)

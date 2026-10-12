@@ -1,4 +1,8 @@
-from contextpack.models import FileRecord
+import json
+from xml.sax.saxutils import escape
+from contextpack.models import FileRecord, PackResult
+
+# render_markdown still builds result.markdown. XML and JSON are rendered after that, from the same PackResult.
 
 
 def directory_tree(paths: list[str]) -> str:
@@ -69,3 +73,65 @@ def render_markdown(
         parts.extend(f"- {item}" for item in skipped)
         parts.append("")
     return "\n".join(parts)
+
+
+def render_xml(result: PackResult) -> str:
+    files = []
+    for record in result.files:
+        files.append(
+            "\n".join(
+                [
+                    f'  <file path="{escape(record.relative_path)}" language="{escape(record.language)}" bytes="{record.size_bytes}" tokens="{record.tokens}" mode="{escape(record.applied_mode)}" rank="{record.rank:.0f}">',
+                    "    <![CDATA[",
+                    record.content.replace("]]>", "]]]]><![CDATA[>"),
+                    "    ]]>",
+                    "  </file>",
+                ]
+            )
+        )
+    skipped = "\n".join(f"  <skipped>{escape(item)}</skipped>" for item in result.skipped)
+    body = "\n".join(files)
+    return (
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<digest>\n"
+        f"  <summary files=\"{len(result.files)}\" skipped=\"{len(result.skipped)}\" "
+        f"bytes=\"{result.total_bytes}\" tokens=\"{result.total_tokens}\"/>\n"
+        f"  <tree><![CDATA[\n{result.tree}\n  ]]></tree>\n"
+        f"{body}\n"
+        f"{skipped}\n"
+        "</digest>\n"
+    )
+
+
+def render_json(result: PackResult) -> str:
+    payload = {
+        "summary": {
+            "files": len(result.files),
+            "skipped": len(result.skipped),
+            "bytes": result.total_bytes,
+            "tokens": result.total_tokens,
+        },
+        "tree": result.tree,
+        "files": [
+            {
+                "path": record.relative_path,
+                "language": record.language,
+                "bytes": record.size_bytes,
+                "tokens": record.tokens,
+                "mode": record.applied_mode,
+                "rank": record.rank,
+                "content": record.content,
+            }
+            for record in result.files
+        ],
+        "skipped": result.skipped,
+    }
+    return json.dumps(payload, indent=2) + "\n"
+
+
+def render_document(result: PackResult, fmt: str) -> str:
+    if fmt == "xml":
+        return render_xml(result)
+    if fmt == "json":
+        return render_json(result)
+    return result.markdown
