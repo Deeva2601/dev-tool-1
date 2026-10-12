@@ -3,10 +3,11 @@ from pathlib import Path
 from contextpack.budget import fit_budget, prepare_item
 from contextpack.compress import is_focus_pinned, mode_for
 from contextpack.discover import iter_source_files, language_for, load_spec
-from contextpack.formatters import directory_tree, render_markdown
+from contextpack.formatters import directory_tree, render_document, render_markdown
 from contextpack.models import FileRecord, PackConfig, PackResult
 from contextpack.tokens import count_tokens
 from contextpack.rank import rank_paths
+from contextpack.secrets import redact
 
 
 def pack(config: PackConfig) -> PackResult:
@@ -23,6 +24,8 @@ def pack(config: PackConfig) -> PackResult:
             skipped.append(f"{relative} ({reason})")
             continue
         raw_text = path.read_text(encoding="utf-8", errors="replace")
+        if config.redact_secrets:
+            raw_text = redact(raw_text)
         language = language_for(path)
         prepared.append(
             prepare_item(
@@ -67,7 +70,7 @@ def pack(config: PackConfig) -> PackResult:
         total_bytes=total_bytes,
         total_tokens=total_tokens,
     )
-    return PackResult(
+    result = PackResult(
         root=str(root),
         files=files,
         skipped=skipped,
@@ -76,6 +79,11 @@ def pack(config: PackConfig) -> PackResult:
         total_bytes=total_bytes,
         total_tokens=total_tokens,
     )
+    if config.format != "markdown":
+        result.markdown = render_document(result, config.format)
+    return result
+
+    
 
 
 def write_result(result: PackResult, output: Path | None) -> Path | None:

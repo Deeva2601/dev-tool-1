@@ -17,7 +17,8 @@ class PackConfig(BaseModel):
     rules: list[str] = Field(default_factory=list)
     max_tokens: int | None = None
     entries: list[str] = Field(default_factory=list)
-
+    format: Literal["markdown", "xml", "json"] = "markdown"
+    redact_secrets: bool = True
 
 class FileRecord(BaseModel):
     relative_path: str
