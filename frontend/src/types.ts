@@ -1,0 +1,29 @@
+export type Compression = "full" | "skeleton" | "outline";
+export type DigestFormat = "markdown" | "xml" | "json";
+
+export type PackRequest = {
+  source: string;
+  mode: Compression;
+  format: DigestFormat;
+  max_tokens: number | null;
+  respect_gitignore: boolean;
+  redact_secrets: boolean;
+};
+
+export type FileSummary = {
+  path: string;
+  language: string;
+  bytes: number;
+  tokens: number;
+  mode: string;
+  rank: number;
+};
+
+export type PackResponse = {
+  root: string;
+  document: string;
+  files: FileSummary[];
+  skipped: string[];
+  total_bytes: number;
+  total_tokens: number;
+};
