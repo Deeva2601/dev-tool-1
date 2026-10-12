@@ -25,6 +25,7 @@ def main(
     focus: list[str] = typer.Option([], "--focus", "-f", help="Glob kept verbatim. Repeatable."),
     rule: list[str] = typer.Option([], "--rule", "-r", help="PATTERN=full|skeleton|outline. Last match wins."),
     max_tokens: int | None = typer.Option(None, "--max-tokens", help="Hard cap for the sum of file tokens."),
+    entry: list[str] = typer.Option([], "--entry", help="Extra entrypoint glob. Repeatable."),
 ) -> None:
     """Pack a local directory into one markdown digest."""
     if mode not in {"full", "skeleton", "outline"}:
@@ -47,6 +48,7 @@ def main(
             focus=focus,
             rules=rule,
             max_tokens=max_tokens,
+            entries=entry,
         )
     )
     written = write_result(result, output)

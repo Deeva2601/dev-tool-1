@@ -81,7 +81,7 @@ def fit_budget(items: list[BudgetItem], max_tokens: int | None) -> BudgetFit:
         victims = [item for item in kept if not item.pinned]
         if not victims:
             break
-        victim = max(victims, key=lambda item: (item.tokens, item.relative_path))
+        victim = min(victims, key=lambda item: (item.rank, -item.tokens, item.relative_path))
         kept.remove(victim)
         omitted.append(f"{victim.relative_path} (over-budget)")
 
@@ -95,7 +95,7 @@ def _total(items: list[BudgetItem]) -> int:
 
 
 def _best_downgrade(items: list[BudgetItem]) -> tuple[BudgetItem, Compression] | None:
-    best: tuple[int, str, BudgetItem, Compression] | None = None
+    best: tuple[tuple[float, int, str], BudgetItem, Compression] | None = None
     for item in items:
         if item.pinned:
             continue
@@ -103,11 +103,9 @@ def _best_downgrade(items: list[BudgetItem]) -> tuple[BudgetItem, Compression] |
         if nxt is None:
             continue
         saved = item.tokens - count_tokens(item.variants[nxt])
-        # Zero-saving steps still count, so a file that cannot shrink
-        # moves to outline and then becomes a candidate for omission.
-        rank = (saved, item.relative_path)
-        if best is None or rank > (best[0], best[1]):
-            best = (saved, item.relative_path, item, nxt)
+        key = (-item.rank, saved, item.relative_path)
+        if best is None or key > best[0]:
+            best = (key, item, nxt)
     if best is None:
         return None
-    return best[2], best[3]
+    return best[1], best[2]

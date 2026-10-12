@@ -2,10 +2,10 @@
 
 ## Summary
 
-- Files included: 16
-- Files skipped: 3016
-- Bytes: 40115
-- Tokens (cl100k_base): 1938
+- Files included: 18
+- Files skipped: 3018
+- Bytes: 46626
+- Tokens (cl100k_base): 2178
 
 ## Directory structure
 
@@ -23,12 +23,14 @@
 │       ├── formatters.py
 │       ├── models.py
 │       ├── pipeline.py
+│       ├── rank.py
 │       ├── skeleton.py
 │       └── tokens.py
 └── tests
     ├── test_budget.py
     ├── test_compress.py
     ├── test_pipeline.py
+    ├── test_rank.py
     └── test_skeleton.py
 ```
 
@@ -36,7 +38,7 @@
 
 ### README.md
 
-<!-- bytes: 148 tokens: 37 mode: outline -->
+<!-- bytes: 148 tokens: 37 mode: outline rank: 0 -->
 
 ```markdown
 # contextpack
@@ -51,7 +53,7 @@ pytest
 
 ### pyproject.toml
 
-<!-- bytes: 763 tokens: 230 mode: outline -->
+<!-- bytes: 763 tokens: 230 mode: outline rank: 0 -->
 
 ```toml
 [build-system]
@@ -91,7 +93,7 @@ testpaths = ["tests"]
 
 ### src/contextpack/__main__.py
 
-<!-- bytes: 72 tokens: 7 mode: outline -->
+<!-- bytes: 72 tokens: 7 mode: outline rank: 1000000 -->
 
 ```python
 from contextpack.cli import app
@@ -99,7 +101,7 @@ from contextpack.cli import app
 
 ### src/contextpack/budget.py
 
-<!-- bytes: 3265 tokens: 147 mode: outline -->
+<!-- bytes: 3126 tokens: 147 mode: outline rank: 0 -->
 
 ```python
 from dataclasses import dataclass
@@ -125,7 +127,7 @@ def _best_downgrade(items: list[BudgetItem]) -> tuple[BudgetItem, Compression] |
 
 ### src/contextpack/cli.py
 
-<!-- bytes: 2429 tokens: 315 mode: outline -->
+<!-- bytes: 2553 tokens: 339 mode: outline rank: 1000000 -->
 
 ```python
 from pathlib import Path
@@ -151,13 +153,14 @@ def main(
     focus: list[str] = typer.Option([], "--focus", "-f", help="Glob kept verbatim. Repeatable."),
     rule: list[str] = typer.Option([], "--rule", "-r", help="PATTERN=full|skeleton|outline. Last match wins."),
     max_tokens: int | None = typer.Option(None, "--max-tokens", help="Hard cap for the sum of file tokens."),
+    entry: list[str] = typer.Option([], "--entry", help="Extra entrypoint glob. Repeatable."),
 ) -> None: ...
 def app() -> None: ...
 ```
 
 ### src/contextpack/compress.py
 
-<!-- bytes: 1736 tokens: 108 mode: outline -->
+<!-- bytes: 1736 tokens: 108 mode: outline rank: 0 -->
 
 ```python
 import pathspec
@@ -172,7 +175,7 @@ def compress(source: str, language: str, mode: Compression) -> str: ...
 
 ### src/contextpack/discover.py
 
-<!-- bytes: 3441 tokens: 78 mode: outline -->
+<!-- bytes: 3441 tokens: 78 mode: outline rank: 0 -->
 
 ```python
 from pathlib import Path
@@ -185,7 +188,7 @@ def iter_source_files(root: Path, spec: pathspec.PathSpec, max_file_bytes: int):
 
 ### src/contextpack/formatters.py
 
-<!-- bytes: 2025 tokens: 67 mode: outline -->
+<!-- bytes: 2049 tokens: 67 mode: outline rank: 0 -->
 
 ```python
 from contextpack.models import FileRecord
@@ -202,7 +205,7 @@ def render_markdown(
 
 ### src/contextpack/models.py
 
-<!-- bytes: 880 tokens: 37 mode: outline -->
+<!-- bytes: 957 tokens: 37 mode: outline rank: 0 -->
 
 ```python
 from pathlib import Path
@@ -215,7 +218,7 @@ class PackResult(BaseModel):
 
 ### src/contextpack/pipeline.py
 
-<!-- bytes: 2700 tokens: 113 mode: outline -->
+<!-- bytes: 2992 tokens: 121 mode: outline rank: 0 -->
 
 ```python
 from pathlib import Path
@@ -225,13 +228,30 @@ from contextpack.discover import iter_source_files, language_for, load_spec
 from contextpack.formatters import directory_tree, render_markdown
 from contextpack.models import FileRecord, PackConfig, PackResult
 from contextpack.tokens import count_tokens
+from contextpack.rank import rank_paths
 def pack(config: PackConfig) -> PackResult: ...
 def write_result(result: PackResult, output: Path | None) -> Path | None: ...
 ```
 
+### src/contextpack/rank.py
+
+<!-- bytes: 4232 tokens: 119 mode: outline rank: 0 -->
+
+```python
+import posixpath
+import re
+from collections import deque
+import pathspec
+def rank_paths(files: list[tuple[str, str, str]], entry_globs: list[str]) -> dict[str, float]: ...
+def _imports(raw: str, language: str, path: str, known: set[str]) -> set[str]: ...
+def _python_imports(raw: str, path: str) -> set[str]: ...
+def _python_candidates(parts: list[str]) -> set[str]: ...
+def _js_imports(raw: str, path: str) -> set[str]: ...
+```
+
 ### src/contextpack/skeleton.py
 
-<!-- bytes: 12756 tokens: 411 mode: outline -->
+<!-- bytes: 12756 tokens: 411 mode: outline rank: 0 -->
 
 ```python
 from tree_sitter import Language, Node, Parser
@@ -261,7 +281,7 @@ def _wrapper(export_node: Node, inner: Node) -> Node: ...
 
 ### src/contextpack/tokens.py
 
-<!-- bytes: 205 tokens: 15 mode: outline -->
+<!-- bytes: 205 tokens: 15 mode: outline rank: 0 -->
 
 ```python
 import tiktoken
@@ -270,7 +290,7 @@ def count_tokens(text: str) -> int: ...
 
 ### tests/test_budget.py
 
-<!-- bytes: 2485 tokens: 109 mode: outline -->
+<!-- bytes: 2485 tokens: 109 mode: outline rank: 0 -->
 
 ```python
 from pathlib import Path
@@ -285,7 +305,7 @@ def test_no_budget_keeps_full_source(tmp_path: Path) -> None: ...
 
 ### tests/test_compress.py
 
-<!-- bytes: 2391 tokens: 115 mode: outline -->
+<!-- bytes: 2391 tokens: 115 mode: outline rank: 0 -->
 
 ```python
 from pathlib import Path
@@ -303,7 +323,7 @@ def test_outline_mode_on_pack(tmp_path: Path) -> None: ...
 
 ### tests/test_pipeline.py
 
-<!-- bytes: 2258 tokens: 53 mode: outline -->
+<!-- bytes: 2258 tokens: 53 mode: outline rank: 0 -->
 
 ```python
 from pathlib import Path
@@ -313,9 +333,24 @@ def test_pack_skips_git_noise_and_counts_real_files(tmp_path: Path) -> None: ...
 def test_extra_exclude(tmp_path: Path) -> None: ...
 ```
 
+### tests/test_rank.py
+
+<!-- bytes: 1901 tokens: 89 mode: outline rank: 0 -->
+
+```python
+from pathlib import Path
+from contextpack.models import PackConfig
+from contextpack.pipeline import pack
+from contextpack.rank import rank_paths
+def test_entry_outranks_import_which_outranks_orphan() -> None: ...
+def test_python_relative_import() -> None: ...
+def test_js_relative_import() -> None: ...
+def test_budget_downgrades_orphan_before_larger_entry(tmp_path: Path) -> None: ...
+```
+
 ### tests/test_skeleton.py
 
-<!-- bytes: 2561 tokens: 96 mode: outline -->
+<!-- bytes: 2561 tokens: 96 mode: outline rank: 0 -->
 
 ```python
 from pathlib import Path
@@ -340,6 +375,7 @@ def test_pack_skeleton_flag(tmp_path: Path) -> None: ...
 - tests/__pycache__/test_budget.cpython-314-pytest-9.1.1.pyc (ignored)
 - tests/__pycache__/test_compress.cpython-314-pytest-9.1.1.pyc (ignored)
 - tests/__pycache__/test_pipeline.cpython-314-pytest-9.1.1.pyc (ignored)
+- tests/__pycache__/test_rank.cpython-314-pytest-9.1.1.pyc (ignored)
 - tests/__pycache__/test_skeleton.cpython-314-pytest-9.1.1.pyc (ignored)
 - src/contextpack/__pycache__/budget.cpython-314.pyc (ignored)
 - src/contextpack/__pycache__/cli.cpython-314.pyc (ignored)
@@ -348,6 +384,7 @@ def test_pack_skeleton_flag(tmp_path: Path) -> None: ...
 - src/contextpack/__pycache__/formatters.cpython-314.pyc (ignored)
 - src/contextpack/__pycache__/models.cpython-314.pyc (ignored)
 - src/contextpack/__pycache__/pipeline.cpython-314.pyc (ignored)
+- src/contextpack/__pycache__/rank.cpython-314.pyc (ignored)
 - src/contextpack/__pycache__/skeleton.cpython-314.pyc (ignored)
 - src/contextpack/__pycache__/tokens.cpython-314.pyc (ignored)
 - src/contextpack/__pycache__/__main__.cpython-314.pyc (ignored)
