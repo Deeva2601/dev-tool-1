@@ -1,10 +1,10 @@
 from pathlib import Path
 
+from contextpack.compress import compress, mode_for
 from contextpack.discover import iter_source_files, language_for, load_spec
 from contextpack.formatters import directory_tree, render_markdown
 from contextpack.models import FileRecord, PackConfig, PackResult
 from contextpack.tokens import count_tokens
-from contextpack.skeleton import skeletonize
 
 
 def pack(config: PackConfig) -> PackResult:
@@ -20,9 +20,11 @@ def pack(config: PackConfig) -> PackResult:
         if path is None:
             skipped.append(f"{relative} ({reason})")
             continue
-        content = path.read_text(encoding="utf-8", errors="replace")
-        if config.skeleton:
-            content = skeletonize(content, language_for(path))
+
+        raw_text = path.read_text(encoding="utf-8", errors="replace")
+        chosen = mode_for(relative, config)
+        content = compress(raw_text, language_for(path), chosen)
+
         files.append(
             FileRecord(
                 relative_path=relative,

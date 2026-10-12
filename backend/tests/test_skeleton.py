@@ -63,8 +63,8 @@ def test_pack_skeleton_flag(tmp_path: Path) -> None:
     )
     (tmp_path / "note.md").write_text("return 'hi'\n", encoding="utf-8")
 
-    full = pack(PackConfig(root=tmp_path, skeleton=False))
-    slim = pack(PackConfig(root=tmp_path, skeleton=True))
+    full = pack(PackConfig(root=tmp_path, mode="full"))
+    slim = pack(PackConfig(root=tmp_path, mode="skeleton"))
 
     full_py = next(item for item in full.files if item.relative_path == "app.py")
     slim_py = next(item for item in slim.files if item.relative_path == "app.py")

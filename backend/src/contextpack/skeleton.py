@@ -174,3 +174,151 @@ def _apply(source: bytes, spans: list[tuple[int, int, bytes]]) -> bytes:
     for start, end, repl in sorted(spans, key=lambda item: item[0], reverse=True):
         out[start:end] = repl
     return bytes(out)
+
+
+def outline(source: str, language_name: str) -> str:
+    """Imports plus class and function signatures. No bodies and no docstrings."""
+    parser = _parser_for(language_name)
+    if parser is None or not source:
+        return source
+    raw = source.encode("utf-8")
+    tree = parser.parse(raw)
+    if language_name == "python":
+        lines = _python_outline(tree.root_node, raw, 0)
+    else:
+        lines = _js_outline(tree.root_node, raw, 0)
+    if not lines:
+        return source
+    return "\n".join(lines) + "\n"
+
+
+def _signature_until(node: Node, source: bytes, body: Node | None) -> str:
+    end = body.start_byte if body is not None else node.end_byte
+    text = source[node.start_byte:end].decode("utf-8", errors="replace").strip()
+    if text.endswith(":"):
+        text = text[:-1].rstrip()
+    if text.endswith("{"):
+        text = text[:-1].rstrip()
+    if text.endswith("=>"):
+        text = text[:-2].rstrip()
+    return " ".join(text.split())
+
+
+def _python_outline(node: Node, source: bytes, indent: int) -> list[str]:
+    lines: list[str] = []
+    pad = "    " * indent
+    for child in node.children:
+        target = child
+        decorators: list[str] = []
+        if child.type == "decorated_definition":
+            for part in child.children:
+                if part.type == "decorator":
+                    decorators.append(source[part.start_byte:part.end_byte].decode("utf-8", errors="replace").strip())
+                elif part.type in {"function_definition", "class_definition"}:
+                    target = part
+        if target.type in {"import_statement", "import_from_statement", "future_import_statement"} and indent == 0:
+            text = source[target.start_byte:target.end_byte].decode("utf-8", errors="replace").strip()
+            lines.append(text)
+            continue
+        if target.type == "class_definition":
+            for deco in decorators:
+                lines.append(f"{pad}{deco}")
+            name = target.child_by_field_name("name")
+            superclasses = target.child_by_field_name("superclasses")
+            header = source[name.start_byte:name.end_byte].decode() if name else "Class"
+            if superclasses is not None:
+                bases = source[superclasses.start_byte:superclasses.end_byte].decode("utf-8", errors="replace")
+                header = f"{header}{bases}"
+            lines.append(f"{pad}class {header}:")
+            body = target.child_by_field_name("body")
+            if body is not None:
+                lines.extend(_python_outline(body, source, indent + 1))
+            continue
+        if target.type == "function_definition":
+            for deco in decorators:
+                lines.append(f"{pad}{deco}")
+            prefix = "async def" if any(part.type == "async" for part in target.children) else "def"
+            name = target.child_by_field_name("name")
+            params = target.child_by_field_name("parameters")
+            returns = target.child_by_field_name("return_type")
+            title = source[name.start_byte:name.end_byte].decode() if name else "fn"
+            sig = source[params.start_byte:params.end_byte].decode() if params else "()"
+            returns = target.child_by_field_name("return_type")
+            if returns is not None:
+                ret = source[returns.start_byte:returns.end_byte].decode("utf-8", errors="replace").strip()
+                if not ret.startswith("->"):
+                    ret = f"-> {ret}"
+                sig = f"{sig} {ret}"
+            lines.append(f"{pad}{prefix} {title}{sig}: ...")
+    return lines
+
+
+def _js_outline(node: Node, source: bytes, indent: int) -> list[str]:
+    lines: list[str] = []
+    pad = "  " * indent
+    for child in node.children:
+        if child.type == "import_statement" and indent == 0:
+            text = source[child.start_byte:child.end_byte].decode("utf-8", errors="replace").strip()
+            lines.append(" ".join(text.split()))
+            continue
+        if child.type in {"class_declaration", "class"}:
+            lines.extend(_js_class(child, source, indent))
+            continue
+        if child.type in _JS_FUNCTION_TYPES:
+            lines.extend(_js_signature_line(child, source, indent))
+            continue
+        if child.type == "export_statement":
+            lines.extend(_js_outline(child, source, indent))
+            continue
+        if child.type in {"lexical_declaration", "variable_declaration"}:
+            arrows = [desc for desc in child.children if desc.type == "variable_declarator"]
+            for declarator in arrows:
+                value = declarator.child_by_field_name("value")
+                name = declarator.child_by_field_name("name")
+                if value is None or name is None:
+                    continue
+                if value.type in {"arrow_function", "function", "generator_function", "class"}:
+                    kind = "const"
+                    prefix = source[child.start_byte:name.start_byte].decode("utf-8", errors="replace")
+                    prefix = " ".join(prefix.split())
+                    title = source[name.start_byte:name.end_byte].decode("utf-8", errors="replace")
+                    lines.append(f"{pad}{prefix} {title} = ...")
+                elif value.type == "call_expression":
+                    continue
+    return lines
+
+
+def _js_class(node: Node, source: bytes, indent: int) -> list[str]:
+    pad = "  " * indent
+    body = node.child_by_field_name("body")
+    header = _signature_until(node, source, body)
+    lines = [f"{pad}{header} {{"]
+    if body is not None:
+        for child in body.children:
+            if child.type in _JS_FUNCTION_TYPES or child.type in {"method_signature", "abstract_method_signature", "public_field_definition"}:
+                if child.type == "public_field_definition":
+                    text = source[child.start_byte:child.end_byte].decode("utf-8", errors="replace").strip()
+                    lines.append(f"{'  ' * (indent + 1)}{text}")
+                else:
+                    lines.extend(_js_signature_line(child, source, indent + 1))
+    lines.append(f"{pad}}}")
+    return lines
+
+
+def _js_signature_line(node: Node, source: bytes, indent: int) -> list[str]:
+    body = node.child_by_field_name("body")
+    header = _signature_until(node, source, body)
+    if not header:
+        return []
+    return [f"{'  ' * indent}{header}"]
+
+
+def _walk_limited(node: Node):
+    yield node
+    for child in node.children:
+        yield from _walk_limited(child)
+
+
+def _wrapper(export_node: Node, inner: Node) -> Node:
+    """Outline uses the export node only to recover leading keywords; inner carries the body."""
+    return inner if inner.type in {"class_declaration", "class", *_JS_FUNCTION_TYPES} else export_node

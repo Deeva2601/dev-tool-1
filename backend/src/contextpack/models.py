@@ -1,6 +1,9 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+Compression = Literal["full", "skeleton", "outline"]
 
 
 class PackConfig(BaseModel):
@@ -9,7 +12,9 @@ class PackConfig(BaseModel):
     max_file_bytes: int = 512_000
     respect_gitignore: bool = True
     extra_excludes: list[str] = Field(default_factory=list)
-    skeleton: bool = False
+    mode: Compression = "full"
+    focus: list[str] = Field(default_factory=list)
+    rules: list[str] = Field(default_factory=list)
 
 
 class FileRecord(BaseModel):

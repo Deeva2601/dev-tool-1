@@ -2,6 +2,7 @@ from pathlib import Path
 
 import typer
 
+from contextpack.compress import parse_rule
 from contextpack.models import PackConfig
 from contextpack.pipeline import pack, write_result
 
@@ -19,9 +20,21 @@ def main(
     max_file_bytes: int = typer.Option(512_000, "--max-file-bytes"),
     exclude: list[str] = typer.Option([], "--exclude", "-e", help="Extra gitignore-style pattern."),
     no_gitignore: bool = typer.Option(False, "--no-gitignore"),
-    skeleton: bool = typer.Option(False, "--skeleton", help="Strip function bodies, keep signatures."),
+    mode: str = typer.Option("full", "--mode", help="full, skeleton, or outline."),
+    skeleton: bool = typer.Option(False, "--skeleton", help="Shortcut for --mode skeleton."),
+    focus: list[str] = typer.Option([], "--focus", "-f", help="Glob kept verbatim. Repeatable."),
+    rule: list[str] = typer.Option([], "--rule", "-r", help="PATTERN=full|skeleton|outline. Last match wins."),
 ) -> None:
     """Pack a local directory into one markdown digest."""
+    if mode not in {"full", "skeleton", "outline"}:
+        raise typer.BadParameter("mode must be full, skeleton, or outline")
+    if skeleton and mode != "full":
+        raise typer.BadParameter("pass either --skeleton or --mode, not both")
+    if skeleton:
+        mode = "skeleton"
+    for item in rule:
+        parse_rule(item)
+
     result = pack(
         PackConfig(
             root=path,
@@ -29,7 +42,9 @@ def main(
             max_file_bytes=max_file_bytes,
             respect_gitignore=not no_gitignore,
             extra_excludes=exclude,
-            skeleton=skeleton,
+            mode=mode,  # type: ignore[arg-type]
+            focus=focus,
+            rules=rule,
         )
     )
     written = write_result(result, output)
@@ -44,7 +59,6 @@ def main(
 
 
 def app() -> None:
-    """Console script entrypoint."""
     typer.run(main)
 
 
