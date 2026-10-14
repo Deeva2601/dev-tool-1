@@ -4,6 +4,7 @@ import { packSource } from "./api";
 import { loadPresets, savePresets } from "./presets";
 import type { Compression, DigestFormat, PackResponse, Preset } from "./types";
 import { ResultView } from "./ResultView.tsx";
+
 import "./App.css";
 
 export default function App() {

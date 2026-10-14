@@ -22,11 +22,6 @@ export function ResultView({ result, format }: { result: PackResponse; format: D
   const digestName = `digest.${EXT[format]}`;
   const instructions = useMemo(() => agentText(result, digestName), [result, digestName]);
 
-  async function copyDigest() {
-    await copyText(result.document);
-    setNotice("Digest copied.");
-  }
-
   return (
     <section className="result">
       <div className="toolbar">
@@ -35,7 +30,13 @@ export function ResultView({ result, format }: { result: PackResponse; format: D
           {result.total_tokens} tokens
         </p>
         <div className="actions">
-          <button type="button" onClick={copyDigest}>
+          <button
+            type="button"
+            onClick={async () => {
+              await copyText(result.document);
+              setNotice("Digest copied.");
+            }}
+          >
             Copy digest
           </button>
           <button type="button" onClick={() => downloadText(digestName, result.document, MIME[format])}>
@@ -82,7 +83,10 @@ export function ResultView({ result, format }: { result: PackResponse; format: D
 }
 
 function FileRow({ file, open, onToggle }: { file: FileSummary; open: boolean; onToggle: () => void }) {
-  const html = useMemo(() => (open ? highlight(file.content, file.language) : ""), [open, file.content, file.language]);
+  const html = useMemo(
+    () => (open ? highlight(file.content, file.language) : ""),
+    [open, file.content, file.language],
+  );
   return (
     <li>
       <button type="button" className="file-head" onClick={onToggle}>

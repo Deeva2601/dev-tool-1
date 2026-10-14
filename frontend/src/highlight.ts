@@ -15,10 +15,8 @@ hljs.registerLanguage("typescript", typescript);
 hljs.registerLanguage("tsx", typescript);
 hljs.registerLanguage("json", json);
 hljs.registerLanguage("xml", xml);
-hljs.registerLanguage("html", xml);
 hljs.registerLanguage("bash", bash);
 hljs.registerLanguage("markdown", markdown);
-hljs.registerLanguage("text", markdown);
 
 const ALIASES: Record<string, string> = {
   py: "python",
@@ -34,4 +32,19 @@ export function highlight(source: string, language: string): string {
     return hljs.highlight(source, { language: name }).value;
   }
   return hljs.highlightAuto(source).value;
+}
+
+
+export function downloadText(filename: string, text: string, mime: string) {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function copyText(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
 }
