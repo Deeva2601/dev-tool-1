@@ -1,6 +1,8 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { lines } from "./lines";
 import { packSource } from "./api";
-import type { Compression, DigestFormat, PackResponse } from "./types";
+import { loadPresets, savePresets } from "./presets";
+import type { Compression, DigestFormat, PackResponse, Preset } from "./types";
 import { ResultView } from "./ResultView.tsx";
 import "./App.css";
 
@@ -14,7 +16,59 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PackResponse | null>(null);
+  const [focus, setFocus] = useState("");
+  const [rules, setRules] = useState("");
+  const [entries, setEntries] = useState("");
+  const [presets, setPresets] = useState<Preset[]>([]);
+  const [presetName, setPresetName] = useState("");
+  const [selectedPreset, setSelectedPreset] = useState("");
 
+  useEffect(() => {
+    setPresets(loadPresets());
+  }, []);
+
+  function currentPreset(name: string): Preset {
+    return {
+      name,
+      mode,
+      format,
+      maxTokens,
+      respectGitignore,
+      redactSecrets,
+      focus,
+      rules,
+      entries,
+    };
+  }
+
+  function applyPreset(preset: Preset) {
+    setMode(preset.mode);
+    setFormat(preset.format);
+    setMaxTokens(preset.maxTokens);
+    setRespectGitignore(preset.respectGitignore);
+    setRedactSecrets(preset.redactSecrets);
+    setFocus(preset.focus);
+    setRules(preset.rules);
+    setEntries(preset.entries);
+  }
+
+  function onSavePreset() {
+    const name = presetName.trim();
+    if (!name) return;
+    const next = [...presets.filter((item) => item.name !== name), currentPreset(name)];
+    setPresets(next);
+    savePresets(next);
+    setSelectedPreset(name);
+  }
+
+  function onDeletePreset() {
+    const next = presets.filter((item) => item.name !== selectedPreset);
+    setPresets(next);
+    savePresets(next);
+    setSelectedPreset("");
+  }
+
+  
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -25,6 +79,9 @@ export default function App() {
         throw new Error("Max tokens must be a positive integer.");
       }
       const packed = await packSource({
+        focus: lines(focus),
+        rules: lines(rules),
+        entries: lines(entries),
         source: source.trim(),
         mode,
         format,
@@ -104,6 +161,57 @@ export default function App() {
             />
             Redact secrets
           </label>
+        </div>
+                <label>
+          Focus globs (one per line, kept verbatim)
+          <textarea value={focus} onChange={(event) => setFocus(event.target.value)} rows={3} placeholder={"src/main.py"} />
+        </label>
+        <label>
+          Rules (one per line, first match wins)
+          <textarea
+            value={rules}
+            onChange={(event) => setRules(event.target.value)}
+            rows={3}
+            placeholder={"src/hot.py=outline\nsrc/**=skeleton"}
+          />
+        </label>
+        <label>
+          Extra entrypoints
+          <textarea value={entries} onChange={(event) => setEntries(event.target.value)} rows={2} placeholder={"src/cli.py"} />
+        </label>
+
+        <div className="row">
+          <label>
+            Preset
+            <select
+              value={selectedPreset}
+              onChange={(event) => {
+                const name = event.target.value;
+                setSelectedPreset(name);
+                const found = presets.find((item) => item.name === name);
+                if (found) applyPreset(found);
+              }}
+            >
+              <option value="">Select</option>
+              {presets.map((item) => (
+                <option key={item.name} value={item.name}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Preset name
+            <input value={presetName} onChange={(event) => setPresetName(event.target.value)} placeholder="review" />
+          </label>
+          <div className="actions preset-actions">
+            <button type="button" onClick={onSavePreset} disabled={presetName.trim() === ""}>
+              Save preset
+            </button>
+            <button type="button" onClick={onDeletePreset} disabled={selectedPreset === ""}>
+              Delete
+            </button>
+          </div>
         </div>
 
         <button type="submit" disabled={busy || source.trim() === ""}>

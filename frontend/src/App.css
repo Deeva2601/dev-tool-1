@@ -189,3 +189,17 @@ h2 {
     grid-template-columns: 1fr;
   }
 }
+
+textarea {
+  font: inherit;
+  color: inherit;
+  background: #111;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.preset-actions {
+  align-self: end;
+}
