@@ -10,6 +10,16 @@ from contextpack.models import PackConfig, PackResult
 from contextpack.pipeline import pack
 
 _OWNER_REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+_GITHUB = re.compile(
+    r"^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?/?$"
+)
+
+
+def is_public_github(source: str) -> bool:
+    text = source.strip().rstrip("/")
+    if _OWNER_REPO.match(text):
+        return True
+    return bool(_GITHUB.match(text))
 
 
 class SourceError(RuntimeError):
@@ -34,7 +44,7 @@ def is_remote(source: str) -> bool:
     )
 
 
-def pack_source(source: str, config: PackConfig, token: str | None = None, branch: str | None = None) -> PackResult:
+def pack_source(source: str, config: PackConfig, token: str | None = None, branch: str | None = None, timeout: int | None = None) -> PackResult:
     if not is_remote(source):
         root = Path(source).expanduser()
         if not root.is_dir():
@@ -47,7 +57,7 @@ def pack_source(source: str, config: PackConfig, token: str | None = None, branc
         return pack(config.model_copy(update={"root": destination}))
 
 
-def clone_repo(source: str, destination: Path, token: str | None = None, branch: str | None = None) -> None:
+def clone_repo(source: str, destination: Path, token: str | None = None, branch: str | None = None, timeout: int | None = None,) -> None:
     url = normalize_remote(source)
     command = ["git", "clone", "--depth", "1", "--quiet"]
     if branch:
@@ -56,7 +66,7 @@ def clone_repo(source: str, destination: Path, token: str | None = None, branch:
         command.extend(["-c", f"http.extraheader=AUTHORIZATION: bearer {token}"])
     command.extend([url, str(destination)])
     try:
-        subprocess.run(command, check=True, capture_output=True, env=os.environ.copy())
+        subprocess.run(command, check=True, capture_output=True, env=os.environ.copy(), timeout=timeout)
     except FileNotFoundError as exc:
         raise SourceError("git is not installed or not on PATH") from exc
     except subprocess.CalledProcessError as exc:
