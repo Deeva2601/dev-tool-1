@@ -7,7 +7,8 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from contextpack.compress import parse_rule
 from contextpack.models import Compression, PackConfig
 from contextpack.limits import limiter
@@ -164,3 +165,30 @@ def pack_endpoint(body: PackRequest,request: Request) -> PackResponse:
 
 def _local_allowed() -> bool:
     return os.environ.get("CONTEXTPACK_ALLOW_LOCAL", "1") != "0"
+
+
+_STATIC = Path(
+    os.environ.get(
+        "CONTEXTPACK_STATIC",
+        str(Path(__file__).resolve().parents[3] / "frontend" / "dist"),
+    )
+).resolve()
+
+
+def _mount_frontend() -> None:
+    if not (_STATIC / "index.html").is_file():
+        return
+    assets = _STATIC / "assets"
+    if assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=assets), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def frontend(full_path: str) -> FileResponse:
+        if full_path:
+            candidate = (_STATIC / full_path).resolve()
+            if candidate.is_file() and _STATIC in candidate.parents:
+                return FileResponse(candidate)
+        return FileResponse(_STATIC / "index.html")
+
+
+_mount_frontend()
