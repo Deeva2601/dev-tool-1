@@ -1,4 +1,4 @@
-import type { Compression, DigestFormat, PackResponse } from "./types";
+import type { Compression, DigestFormat, PackResponse } from "../../lib/types";
 
 const KEY = "contextpack.history";
 const LIMIT = 20;

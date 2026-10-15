@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { agentText } from "./agentText";
 import { copyText, downloadText } from "./download";
 import { highlight } from "./highlight";
-import type { DigestFormat, FileSummary, PackResponse } from "./types";
+import type { DigestFormat, FileSummary, PackResponse } from "../../lib/types";
 
 const EXT: Record<DigestFormat, string> = {
   markdown: "md",

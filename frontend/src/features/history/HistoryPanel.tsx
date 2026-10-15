@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { clearHistory, diffFiles, type HistoryEntry } from "./history";
-import type { PackResponse } from "./types";
+import type { PackResponse } from "../../lib/types";
 
 export function HistoryPanel({
   history,

@@ -1,4 +1,4 @@
-import type { PackResponse } from "./types";
+import type { PackResponse } from "../../lib/types";
 
 export function agentText(result: PackResponse, digestName: string): string {
   const included =
