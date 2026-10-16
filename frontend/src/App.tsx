@@ -4,12 +4,12 @@ import {
   Check,
   ChevronDown,
   GitBranch,
-  FolderGit2,
   LoaderCircle,
+  Moon,
   Search,
   ShieldCheck,
   Sparkles,
-  Terminal,
+  Sun,
 } from "lucide-react";
 import { packSource } from "./api";
 import type { Compression, DigestFormat, PackResponse } from "./types";
@@ -25,6 +25,9 @@ const modes: { value: Compression; label: string; description: string }[] = [
 type HealthState = "checking" | "connected" | "unavailable";
 
 export default function App() {
+  const [theme, setTheme] = useState<"light" | "dark">(
+    () => window.localStorage.getItem("contextpack-theme") === "dark" ? "dark" : "light",
+  );
   const [source, setSource] = useState("");
   const [mode, setMode] = useState<Compression>("full");
   const [format, setFormat] = useState<DigestFormat>("markdown");
@@ -37,6 +40,11 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PackResponse | null>(null);
   const [resultFormat, setResultFormat] = useState<DigestFormat>("markdown");
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("contextpack-theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,7 +124,7 @@ export default function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" id="home">
       <div className="page-container">
         <header className="site-header">
           {result ? (
@@ -128,61 +136,55 @@ export default function App() {
               <BrandMark />
             </a>
           )}
-          {!result ? (
-            <a href="#how-it-works" className="header-link">
-              How it works <ChevronDown aria-hidden="true" />
-            </a>
-          ) : (
-            <button className="secondary-button" type="button" onClick={packAnother}>
-              <span aria-hidden="true">↺</span> Pack another repository
+          <div className="header-actions">
+            {!result ? (
+              <a href="#how-it-works" className="header-link">
+                How it works <ChevronDown aria-hidden="true" />
+              </a>
+            ) : (
+              <button className="secondary-button" type="button" onClick={packAnother}>
+                <span aria-hidden="true">↺</span> Pack another repository
+              </button>
+            )}
+            <button
+              className="theme-toggle"
+              type="button"
+              onClick={() => setTheme((current) => current === "light" ? "dark" : "light")}
+              aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+              aria-pressed={theme === "dark"}
+            >
+              {theme === "light" ? <Moon aria-hidden="true" /> : <Sun aria-hidden="true" />}
+              {theme === "light" ? "Dark mode" : "Light mode"}
             </button>
-          )}
+          </div>
         </header>
 
         {result ? (
           <ResultView result={result} format={resultFormat} onPackAnother={packAnother} />
         ) : (
           <>
-            <section className="hero-grid" id="home">
-              <div className="hero-copy">
-                <p className="eyebrow"><Terminal aria-hidden="true" /> Repository context for AI</p>
-                <h1 className="hero-title">Turn any codebase into <span>clear context.</span></h1>
-                <p className="hero-description">
-                  Pack a repository into a focused, token-counted digest your AI tools can actually use.
-                </p>
-                <div className={`health-pill health-${health}`} role="status" aria-live="polite">
-                  {health === "checking" ? <LoaderCircle className="spin" aria-hidden="true" /> : null}
-                  {health === "connected" ? <Check aria-hidden="true" /> : null}
-                  {health === "unavailable" ? <AlertCircle aria-hidden="true" /> : null}
-                  <span>
-                    {health === "checking" ? "Checking the Contextpack service…" : null}
-                    {health === "connected" ? "Service connected and ready" : null}
-                    {health === "unavailable" ? "Service unavailable — start the backend to pack a repository" : null}
-                  </span>
-                  {health === "unavailable" ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setHealth("checking");
-                        setHealthCheck((count) => count + 1);
-                      }}
-                    >
-                      Retry
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-              <div className="hero-orb" aria-hidden="true">
-                <div className="orb-grid">
-                  <FolderGit2 />
-                  <span>repo</span>
-                  <span>context</span>
-                  <span>ready</span>
-                </div>
-              </div>
-            </section>
-
             <form onSubmit={onSubmit} className="workspace-card" id="create">
+              <div className={`health-pill health-${health}`} role="status" aria-live="polite">
+                {health === "checking" ? <LoaderCircle className="spin" aria-hidden="true" /> : null}
+                {health === "connected" ? <Check aria-hidden="true" /> : null}
+                {health === "unavailable" ? <AlertCircle aria-hidden="true" /> : null}
+                <span>
+                  {health === "checking" ? "Checking the Contextpack service…" : null}
+                  {health === "connected" ? "Service connected and ready" : null}
+                  {health === "unavailable" ? "Service unavailable — start the backend to pack a repository" : null}
+                </span>
+                {health === "unavailable" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHealth("checking");
+                      setHealthCheck((count) => count + 1);
+                    }}
+                  >
+                    Retry
+                  </button>
+                ) : null}
+              </div>
               <div className="workspace-heading">
                 <div>
                   <p className="eyebrow">Create a digest</p>
